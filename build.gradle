@@ -1,0 +1,79 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = "${minecraft_version}-${mod_version}"
+group = mod_group
+base.archivesName = mod_name
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+// Keep build output out of OneDrive (it locks files while syncing)
+layout.buildDirectory = file("${System.getProperty('user.home')}/.gradle-builds/${project.name}")
+
+repositories {
+    mavenLocal()
+}
+
+dependencies {
+    implementation "com.magicbanana666:bananautil:${bananautil_version}"
+    // -PwithMorph: also run Morph Reinvented in the dev client (to test the integration)
+    if (project.hasProperty('withMorph')) {
+        runtimeOnly files("${System.getProperty('user.home')}/.gradle-builds/MorphReinvented/libs/MorphReinvented-${minecraft_version}-1.0.0.jar")
+    }
+}
+
+neoForge {
+    version = neoforge_version
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+
+    runs {
+        configureEach {
+            gameDirectory = file("${System.getProperty('user.home')}/.gradle-builds/${project.name}/run")
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        client {
+            client()
+            // -Pquickplay=<world> loads straight into a singleplayer world (automated smoke tests)
+            if (project.hasProperty('quickplay')) {
+                programArguments.addAll('--quickPlaySingleplayer', project.property('quickplay').toString())
+            }
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    def props = [mod_id: mod_id, mod_name: mod_name, mod_display_name: mod_display_name, mod_version: mod_version, minecraft_version: minecraft_version, neoforge_version: neoforge_version, bananautil_version: bananautil_version]
+    inputs.properties props
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand props
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_id,
+                'Specification-Vendor'  : 'magicbanana666',
+                'Specification-Version' : '1',
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor' : 'magicbanana666'
+        ])
+    }
+}

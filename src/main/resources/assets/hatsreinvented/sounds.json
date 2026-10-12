@@ -1,0 +1,23 @@
+{
+  "tube": {
+    "category": "player",
+    "sounds": [
+      "hatsreinvented:tube"
+    ],
+    "subtitle": "subtitles.hats.hat_launcher.firing"
+  },
+  "poof": {
+    "category": "player",
+    "sounds": [
+      "hatsreinvented:poof"
+    ],
+    "subtitle": "subtitles.hats.hat_launcher.hit"
+  },
+  "bonk": {
+    "category": "neutral",
+    "sounds": [
+      "hatsreinvented:bonk"
+    ],
+    "subtitle": "subtitles.hats.hat.bonk"
+  }
+}
