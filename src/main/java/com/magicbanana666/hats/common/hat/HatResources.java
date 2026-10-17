@@ -11,10 +11,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -25,7 +25,8 @@ import java.util.zip.ZipInputStream;
  */
 public final class HatResources
 {
-    public static final Map<String, HatInfo> HATS = new ConcurrentHashMap<>();
+    /** Read by the render / server threads while a reload can be running: a reload builds a new map and swaps it in. */
+    public static volatile Map<String, HatInfo> HATS = Map.of();
     private static Path hatsDir;
 
     private HatResources() {}
@@ -93,7 +94,7 @@ public final class HatResources
 
     public static synchronized void loadAllHats()
     {
-        HATS.clear();
+        Map<String, HatInfo> hats = new HashMap<>();
         List<HatInfo> accessories = new ArrayList<>();
         int files = 0;
         try(Stream<Path> stream = Files.walk(getHatsDir()))
@@ -110,7 +111,7 @@ public final class HatResources
                     files++;
                     if(info.accessoryFor == null)
                     {
-                        HATS.put(info.name, info);
+                        hats.put(info.name, info);
                     }
                     else
                     {
@@ -131,7 +132,7 @@ public final class HatResources
             byHat.computeIfAbsent(accessory.accessoryFor, k -> new ArrayList<>()).add(accessory);
         }
         byHat.forEach((hatName, infos) -> {
-            HatInfo base = HATS.get(hatName);
+            HatInfo base = hats.get(hatName);
             if(base != null)
             {
                 base.accessorise(infos);
@@ -141,8 +142,11 @@ public final class HatResources
                 HatsReinvented.LOGGER.warn("Could not find the hat {} for the accessory {}", hatName, orphan.name);
             }
         });
-        HatsReinvented.LOGGER.info("Loaded {} hat files: {} hats, {} accessories", files, HATS.size(), accessoryCount);
-        HatHandler.allocateHatPools();
+        HatsReinvented.LOGGER.info("Loaded {} hat files: {} hats, {} accessories", files, hats.size(), accessoryCount);
+        Map<String, HatInfo> loaded = Collections.unmodifiableMap(hats);
+        //rarities and pools are set up before the new hats become visible
+        HatHandler.allocateHatPools(loaded);
+        HATS = loaded;
     }
 
     @Nullable

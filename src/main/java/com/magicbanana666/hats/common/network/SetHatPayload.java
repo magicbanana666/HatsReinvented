@@ -13,11 +13,15 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import java.util.List;
 import java.util.Optional;
 
-/** Client -> server: the hat the player picked in the menu, plus their colour / accessory choices. */
-public record SetHatPayload(Optional<HatPart> worn, List<HatPart> customised) implements CustomPacketPayload
+/**
+ * Client -> server: the hat the player picked in the menu, plus their colour / accessory choices.
+ * changeWorn is false when the player didn't pick another hat (or take theirs off), so the worn hat is left alone.
+ */
+public record SetHatPayload(boolean changeWorn, Optional<HatPart> worn, List<HatPart> customised) implements CustomPacketPayload
 {
     public static final Type<SetHatPayload> TYPE = new Type<>(HatsReinvented.id("set_hat"));
     public static final StreamCodec<RegistryFriendlyByteBuf, SetHatPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL, SetHatPayload::changeWorn,
             ByteBufCodecs.optional(HatPart.STREAM_CODEC), SetHatPayload::worn,
             HatPart.STREAM_CODEC.apply(ByteBufCodecs.list(512)), SetHatPayload::customised,
             SetHatPayload::new);
@@ -32,7 +36,7 @@ public record SetHatPayload(Optional<HatPart> worn, List<HatPart> customised) im
     {
         if(context.player() instanceof ServerPlayer player)
         {
-            HatHandler.setPlayerHat(player, payload.worn.orElse(null), payload.customised);
+            HatHandler.setPlayerHat(player, payload.changeWorn, payload.worn.orElse(null), payload.customised);
         }
     }
 }

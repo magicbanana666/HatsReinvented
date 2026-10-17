@@ -26,7 +26,8 @@ import java.util.Random;
  */
 public final class HatHandler
 {
-    public static final EnumMap<Rarity, List<HatPool>> HAT_POOLS = new EnumMap<>(Rarity.class);
+    /** Rebuilt aside and swapped in, as it is read on the server thread while a reload (config watcher, /hats reload) runs. */
+    private static volatile Map<Rarity, List<HatPool>> hatPools = new EnumMap<>(Rarity.class);
 
     private HatHandler() {}
 
@@ -103,11 +104,16 @@ public final class HatHandler
 
     // ------------------------------------------------------------------ pools
 
-    public static synchronized void allocateHatPools()
+    public static void allocateHatPools()
     {
-        HAT_POOLS.clear();
+        allocateHatPools(HatResources.HATS);
+    }
+
+    public static synchronized void allocateHatPools(Map<String, HatInfo> hats)
+    {
+        EnumMap<Rarity, List<HatPool>> pools = new EnumMap<>(Rarity.class);
         Map<String, HatPool> poolsByName = new HashMap<>();
-        for(Map.Entry<String, HatInfo> entry : HatResources.HATS.entrySet())
+        for(Map.Entry<String, HatInfo> entry : hats.entrySet())
         {
             HatInfo info = entry.getValue();
             info.resetRarity();
@@ -131,12 +137,13 @@ public final class HatHandler
             {
                 info.setRarity(rarity);
             }
-            HAT_POOLS.computeIfAbsent(rarity, k -> new ArrayList<>()).add(pool);
+            pools.computeIfAbsent(rarity, k -> new ArrayList<>()).add(pool);
         }
         for(Rarity rarity : Rarity.values())
         {
-            HAT_POOLS.computeIfAbsent(rarity, k -> new ArrayList<>());
+            pools.computeIfAbsent(rarity, k -> new ArrayList<>());
         }
+        hatPools = pools;
     }
 
     // ------------------------------------------------------------------ entities
@@ -202,7 +209,7 @@ public final class HatHandler
             chance += getBossRarityBonus();
         }
         Rarity rarity = getRarityForChance(chance);
-        List<HatPool> pools = HAT_POOLS.get(rarity);
+        List<HatPool> pools = hatPools.get(rarity);
         if(pools == null || pools.isEmpty())
         {
             assignNoHat(entity);
@@ -273,7 +280,7 @@ public final class HatHandler
 
         PlayerHats hats = getPlayerHats(player);
         HatPart owned = hats.get(toAdd.name);
-        boolean isNewHat = owned == null;
+        boolean isNewHat = owned == null || owned.count <= 0;
         if(owned == null)
         {
             owned = new HatPart(toAdd.name).setNew();
@@ -403,38 +410,82 @@ public final class HatHandler
         return true;
     }
 
-    /** Saves the colours / accessories the player picked for their hats, and puts on the chosen hat. */
-    public static void setPlayerHat(ServerPlayer player, @Nullable HatPart worn, List<HatPart> customised)
+    /**
+     * Rebuilds a hat the client sent from the loaded hat, keeping only the client's colours and show / hide choices
+     * for accessories that really exist. Null if there is no such hat.
+     */
+    @Nullable
+    private static HatPart fromClient(HatPart sent, int count)
+    {
+        HatInfo info = HatResources.get(sent);
+        if(info == null)
+        {
+            return null;
+        }
+        HatPart part = info.getAsHatPart(count);
+        part.copyPersonalisation(sent);
+        clampColours(part);
+        return part;
+    }
+
+    private static void clampColours(HatPart part)
+    {
+        for(int i = 0; i < part.colouriser.length; i++)
+        {
+            part.colouriser[i] = Float.isNaN(part.colouriser[i]) ? 0F : Math.clamp(part.colouriser[i], 0F, 1F);
+        }
+        for(int i = 0; i < part.hsbiser.length; i++)
+        {
+            part.hsbiser[i] = Float.isNaN(part.hsbiser[i]) ? 0F : Math.clamp(part.hsbiser[i], 0F, 1F);
+        }
+        for(HatPart child : part.hatParts)
+        {
+            clampColours(child);
+        }
+    }
+
+    /**
+     * Saves the colours / accessories the player picked for their hats, and (if changeWorn) puts on the chosen hat,
+     * or takes the hat off when worn is null.
+     */
+    public static void setPlayerHat(ServerPlayer player, boolean changeWorn, @Nullable HatPart worn, List<HatPart> customised)
     {
         PlayerHats hats = getPlayerHats(player);
         for(HatPart custom : customised)
         {
-            HatPart owned = hats.get(custom.name);
+            HatPart clean = fromClient(custom, 0);
+            if(clean == null)
+            {
+                continue;
+            }
+            HatPart owned = hats.get(clean.name);
             if(owned != null)
             {
-                owned.copyPersonalisation(custom);
+                owned.copyPersonalisation(clean);
                 owned.setNoNew();
             }
             else if(!useInventory(player))
             {
-                HatPart copy = custom.createCopy();
-                setCountOfAll(copy, 0);
-                hats.hatParts.add(copy);
+                hats.hatParts.add(clean);
             }
         }
         player.syncData(HatsAttachments.PLAYER_HATS);
 
+        if(!changeWorn)
+        {
+            return;
+        }
         if(worn == null || !worn.isAHat())
         {
             setHat(player, null);
+            return;
         }
-        else if(canWear(player, worn))
+        HatPart wanted = fromClient(worn, 1);
+        if(wanted != null && canWear(player, wanted))
         {
-            HatPart copy = worn.createCopy();
-            copy.count = 1;
-            copy.isShowing = true;
-            copy.isNew = false;
-            setHat(player, copy);
+            wanted.isShowing = true;
+            wanted.isNew = false;
+            setHat(player, wanted);
         }
         else
         {

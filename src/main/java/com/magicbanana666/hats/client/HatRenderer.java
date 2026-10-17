@@ -20,17 +20,41 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * Draws hats: bakes the Tabula projects into models (per set of hidden parts) and uploads their textures
- * (per hue / saturation / brightness change).
+ * (per hue / saturation / brightness change). Colour changes are rounded to steps and only the most recently used
+ * textures are kept, so dragging the colour sliders doesn't upload a texture for every value.
  */
 public final class HatRenderer
 {
+    /** Hue / saturation / brightness are rounded to 1 / COLOUR_STEPS. */
+    private static final int COLOUR_STEPS = 64;
+    private static final int MAX_TEXTURES = 256;
+
     private static final Map<HatInfo, Cache> CACHES = new HashMap<>();
+    /** All uploaded textures, least recently used first; the eldest is released when there are too many. */
+    private static final LinkedHashMap<TextureKey, Optional<Identifier>> TEXTURES = new LinkedHashMap<>(16, 0.75F, true)
+    {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<TextureKey, Optional<Identifier>> eldest)
+        {
+            if(size() > MAX_TEXTURES)
+            {
+                eldest.getValue().ifPresent(HatRenderer::releaseTexture);
+                return true;
+            }
+            return false;
+        }
+    };
+    /** The hats the caches were made for; reloading the hats replaces the map, then the caches are dropped. */
+    @Nullable
+    private static Map<String, HatInfo> cachedHats;
     private static int nextTextureId;
 
     private HatRenderer() {}
@@ -39,7 +63,6 @@ public final class HatRenderer
     {
         final HatInfo info;
         final Map<Set<String>, BakedTabulaModel> models = new HashMap<>();
-        final Map<String, Identifier> textures = new HashMap<>();
 
         Cache(HatInfo info)
         {
@@ -54,11 +77,11 @@ public final class HatRenderer
         @Nullable
         Identifier texture(float[] hsbiser)
         {
-            String key = hsbiser[0] + "H" + hsbiser[1] + "S" + hsbiser[2] + "B";
-            Identifier existing = textures.get(key);
-            if(existing != null || textures.containsKey(key))
+            TextureKey key = new TextureKey(info, quantise(hsbiser[0]), quantise(hsbiser[1]), quantise(hsbiser[2]));
+            Optional<Identifier> existing = TEXTURES.get(key);
+            if(existing != null)
             {
-                return existing;
+                return existing.orElse(null);
             }
             Identifier id = null;
             byte[] bytes = info.project.textureBytes;
@@ -67,9 +90,9 @@ public final class HatRenderer
                 try
                 {
                     NativeImage image = NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes));
-                    if(hsbiser[0] != 0F || hsbiser[1] != 0F || hsbiser[2] != 0F)
+                    if(key.hue() != 0 || key.saturation() != 0 || key.brightness() != 0)
                     {
-                        applyHsb(image, hsbiser);
+                        applyHsb(image, new float[] {key.hue() / (float)COLOUR_STEPS, key.saturation() / (float)COLOUR_STEPS, key.brightness() / (float)COLOUR_STEPS});
                     }
                     id = HatsReinvented.id("hat/" + (nextTextureId++));
                     String label = "hat " + info.name;
@@ -80,22 +103,22 @@ public final class HatRenderer
                     HatsReinvented.LOGGER.warn("Could not load the texture of hat {}: {}", info.name, e.toString());
                 }
             }
-            textures.put(key, id);
+            TEXTURES.put(key, Optional.ofNullable(id));
             return id;
         }
+    }
 
-        void release()
-        {
-            for(Identifier id : textures.values())
-            {
-                if(id != null)
-                {
-                    Minecraft.getInstance().getTextureManager().release(id);
-                }
-            }
-            textures.clear();
-            models.clear();
-        }
+    /** A texture of a hat with its (rounded) hue / saturation / brightness change. */
+    private record TextureKey(HatInfo info, int hue, int saturation, int brightness) {}
+
+    private static int quantise(float value)
+    {
+        return Float.isFinite(value) ? Math.round(Math.clamp(value, 0F, 1F) * COLOUR_STEPS) : 0;
+    }
+
+    private static void releaseTexture(Identifier id)
+    {
+        Minecraft.getInstance().getTextureManager().release(id);
     }
 
     private static void applyHsb(NativeImage image, float[] hsbiser)
@@ -123,20 +146,28 @@ public final class HatRenderer
         return CACHES.computeIfAbsent(info, Cache::new);
     }
 
-    /** Frees all textures (after reloading the hats). */
+    /** Frees all textures and models (on a resource reload, or after the hats were reloaded). */
     public static void clear()
     {
-        for(Cache cache : CACHES.values())
+        for(Optional<Identifier> id : TEXTURES.values())
         {
-            cache.release();
+            id.ifPresent(HatRenderer::releaseTexture);
         }
+        TEXTURES.clear();
         CACHES.clear();
     }
 
     /** Renders a hat with its showing accessories. The pose is the hat origin (top centre of a player sized head). */
     public static boolean render(HatPart part, PoseStack poseStack, SubmitNodeCollector collector, int light, int overlay, int outlineColor)
     {
-        HatInfo info = HatResources.get(part);
+        Map<String, HatInfo> hats = HatResources.HATS;
+        if(hats != cachedHats)
+        {
+            //the hats were reloaded, the old ones won't be drawn again
+            clear();
+            cachedHats = hats;
+        }
+        HatInfo info = hats.get(part.name);
         if(info == null || !part.isAHat())
         {
             return false;

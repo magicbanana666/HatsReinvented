@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
@@ -23,6 +24,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
@@ -61,6 +63,13 @@ public final class HatsClient
         modBus.addListener(HatsClient::addLayers);
         modBus.addListener(HatsClient::registerRenderStateModifiers);
         modBus.addListener(HatsClient::registerPayloadHandlers);
+        modBus.addListener(HatsClient::addReloadListeners);
+    }
+
+    private static void addReloadListeners(AddClientReloadListenersEvent event)
+    {
+        //the hat textures are uploaded by us, free them when the resources (and textures) are reloaded
+        event.addListener(HatsReinvented.id("hat_textures"), (ResourceManagerReloadListener)resourceManager -> HatRenderer.clear());
     }
 
     private static void registerKeys(RegisterKeyMappingsEvent event)

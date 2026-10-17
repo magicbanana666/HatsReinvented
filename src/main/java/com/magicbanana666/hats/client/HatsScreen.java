@@ -45,6 +45,8 @@ public class HatsScreen extends Screen
     @Nullable
     private HatPart selected;
     private boolean wearSelected;
+    /** Did the player pick another hat or take theirs off? If not, the worn hat is left as it is (it may not be in the unlocked list, EG set by a command). */
+    private boolean wornChanged;
 
     private HatList hatList;
     private AccessoryList accessoryList;
@@ -136,6 +138,7 @@ public class HatsScreen extends Screen
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose()).bounds(previewLeft, buttonsY, bw, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("hats.gui.button.removeHat"), b -> {
             wearSelected = false;
+            wornChanged = true;
             HatsClient.previewHat = null;
             updateWidgets();
         }).bounds(previewLeft + bw + 4, buttonsY, bw, 20).build());
@@ -208,6 +211,7 @@ public class HatsScreen extends Screen
         if(isUnlocked(part))
         {
             wearSelected = true;
+            wornChanged = true;
             HatsClient.previewHat = part;
         }
         else
@@ -353,7 +357,9 @@ public class HatsScreen extends Screen
         {
             changed.add(part.createCopy());
         }
-        ClientPacketDistributor.sendToServer(new SetHatPayload(Optional.ofNullable(worn == null ? null : worn.createCopy()), changed));
+        //an unchanged unlocked hat is still sent, so its colours / accessories are applied
+        boolean changeWorn = wornChanged || worn != null;
+        ClientPacketDistributor.sendToServer(new SetHatPayload(changeWorn, Optional.ofNullable(worn == null ? null : worn.createCopy()), changed));
         HatsClient.previewEntity = null;
         HatsClient.previewHat = null;
         super.onClose();
