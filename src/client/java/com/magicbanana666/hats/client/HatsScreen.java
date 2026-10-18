@@ -6,6 +6,7 @@ import com.magicbanana666.hats.common.hat.HatInfo;
 import com.magicbanana666.hats.common.hat.HatPart;
 import com.magicbanana666.hats.common.hat.HatResources;
 import com.magicbanana666.hats.common.network.SetHatPayload;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -21,7 +22,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -359,7 +359,7 @@ public class HatsScreen extends Screen
         }
         //an unchanged unlocked hat is still sent, so its colours / accessories are applied
         boolean changeWorn = wornChanged || worn != null;
-        ClientPacketDistributor.sendToServer(new SetHatPayload(changeWorn, Optional.ofNullable(worn == null ? null : worn.createCopy()), changed));
+        ClientPlayNetworking.send(new SetHatPayload(changeWorn, Optional.ofNullable(worn == null ? null : worn.createCopy()), changed));
         HatsClient.previewEntity = null;
         HatsClient.previewHat = null;
         super.onClose();

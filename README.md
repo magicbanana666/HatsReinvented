@@ -1,6 +1,6 @@
 # Hats Reinvented
 
-**Mobs spawn wearing hats. Kill them to collect the hats, then wear and customise them.** For **Minecraft 26.1.2 / NeoForge**.
+**Mobs spawn wearing hats. Kill them to collect the hats, then wear and customise them.** For **Minecraft 26.1.2 / Fabric**.
 
 ## Features
 
@@ -16,9 +16,12 @@
 
 `/hats give <players> <count> <hat>`, `/hats set <entities> <allAccessories> <hat>`, `/hats remove <entities>`, `/hats clear <players>`, `/hats list`, `/hats reload`, `/hats reextract`
 
+`/hats reload` also reloads the server config (`<world>/serverconfig/hatsreinvented-server.toml`). The client config is `config/hatsreinvented-client.toml`.
+
 ## Requirements
 
-- [BananaUtil](https://github.com/magicbanana666/BananaUtil)
+- [Fabric API](https://modrinth.com/mod/fabric-api)
+- [BananaUtil](https://github.com/magicbanana666/BananaUtil) (Fabric build)
 
 ## License
 

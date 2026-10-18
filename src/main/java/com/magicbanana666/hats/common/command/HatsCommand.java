@@ -1,6 +1,7 @@
 package com.magicbanana666.hats.common.command;
 
 import com.magicbanana666.hats.common.HatsAttachments;
+import com.magicbanana666.hats.common.HatsConfig;
 import com.magicbanana666.hats.common.hat.HatHandler;
 import com.magicbanana666.hats.common.hat.HatInfo;
 import com.magicbanana666.hats.common.hat.HatPart;
@@ -62,6 +63,8 @@ public final class HatsCommand
                         }))
                 .then(Commands.literal("reload")
                         .executes(c -> {
+                            //Fabric has no config file watcher: reload the server config too
+                            HatsConfig.loadServer(c.getSource().getServer());
                             HatResources.loadAllHats();
                             c.getSource().sendSuccess(() -> Component.translatable("commands.hats.reload.success", HatResources.HATS.size()), true);
                             return 1;
@@ -100,7 +103,7 @@ public final class HatsCommand
             if(owned != null && count > 1)
             {
                 owned.count += count - 1;
-                player.syncData(HatsAttachments.PLAYER_HATS);
+                HatsAttachments.syncPlayerHats(player);
             }
             c.getSource().sendSuccess(() -> Component.translatable("commands.hats.addCount.success", count, player.getDisplayName()), true);
         }
@@ -159,7 +162,7 @@ public final class HatsCommand
         for(ServerPlayer player : players)
         {
             HatHandler.getPlayerHats(player).hatParts.clear();
-            player.syncData(HatsAttachments.PLAYER_HATS);
+            HatsAttachments.syncPlayerHats(player);
             HatHandler.setHat(player, null);
             source.sendSuccess(() -> Component.translatable("commands.hats.clear.success", player.getDisplayName()), true);
         }

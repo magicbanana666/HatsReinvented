@@ -1,35 +1,42 @@
 package com.magicbanana666.hats.common;
 
-import com.magicbanana666.hats.HatsReinvented;
 import com.magicbanana666.hats.common.command.HatsCommand;
 import com.magicbanana666.hats.common.hat.HatHandler;
 import com.magicbanana666.hats.common.hat.HatPart;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.FakePlayer;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 
-@EventBusSubscriber(modid = HatsReinvented.MOD_ID)
 public final class CommonEvents
 {
     private CommonEvents() {}
 
-    @SubscribeEvent
-    public static void onRegisterCommands(RegisterCommandsEvent event)
+    public static void register()
     {
-        HatsCommand.register(event.getDispatcher());
+        CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> HatsCommand.register(dispatcher));
+        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> onEntityJoin(entity));
+        ServerLivingEntityEvents.AFTER_DEATH.register(CommonEvents::onLivingDeath);
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+            HatsConfig.loadServer(server);
+            //rarities depend on the seed and weights
+            HatHandler.allocateHatPools();
+        });
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            HatsConfig.unloadServer();
+            HatHandler.allocateHatPools();
+        });
     }
 
-    @SubscribeEvent
-    public static void onEntityJoin(EntityJoinLevelEvent event)
+    private static void onEntityJoin(Entity entity)
     {
-        if(event.getLevel().isClientSide() || !(event.getEntity() instanceof LivingEntity living) || living instanceof Player)
+        if(entity.level().isClientSide() || !(entity instanceof LivingEntity living) || living instanceof Player)
         {
             return;
         }
@@ -48,11 +55,9 @@ public final class CommonEvents
         }
     }
 
-    @SubscribeEvent
-    public static void onLivingDeath(LivingDeathEvent event)
+    private static void onLivingDeath(LivingEntity victim, DamageSource source)
     {
-        LivingEntity victim = event.getEntity();
-        if(victim.level().isClientSide() || victim instanceof Player || !victim.hasData(HatsAttachments.HAT))
+        if(victim.level().isClientSide() || victim instanceof Player || !victim.hasAttached(HatsAttachments.HAT))
         {
             return;
         }
@@ -61,7 +66,7 @@ public final class CommonEvents
         {
             return;
         }
-        Entity killer = event.getSource().getEntity();
+        Entity killer = source.getEntity();
         if(killer instanceof ServerPlayer player && !(killer instanceof FakePlayer))
         {
             HatHandler.addHat(player, hat);

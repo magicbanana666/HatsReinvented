@@ -3,7 +3,7 @@ package com.magicbanana666.hats.common.hat;
 import com.magicbanana666.bananautil.tabula.TabulaFile;
 import com.magicbanana666.bananautil.tabula.TabulaProject;
 import com.magicbanana666.hats.HatsReinvented;
-import net.neoforged.fml.loading.FMLPaths;
+import net.fabricmc.loader.api.FabricLoader;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public final class HatResources
     {
         if(hatsDir == null)
         {
-            hatsDir = FMLPaths.GAMEDIR.get().resolve("hats");
+            hatsDir = FabricLoader.getInstance().getGameDir().resolve("hats");
         }
         return hatsDir;
     }

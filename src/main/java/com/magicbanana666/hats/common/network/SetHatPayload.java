@@ -8,7 +8,6 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,11 +31,8 @@ public record SetHatPayload(boolean changeWorn, Optional<HatPart> worn, List<Hat
         return TYPE;
     }
 
-    public static void handle(SetHatPayload payload, IPayloadContext context)
+    public static void handle(SetHatPayload payload, ServerPlayer player)
     {
-        if(context.player() instanceof ServerPlayer player)
-        {
-            HatHandler.setPlayerHat(player, payload.changeWorn, payload.worn.orElse(null), payload.customised);
-        }
+        HatHandler.setPlayerHat(player, payload.changeWorn, payload.worn.orElse(null), payload.customised);
     }
 }

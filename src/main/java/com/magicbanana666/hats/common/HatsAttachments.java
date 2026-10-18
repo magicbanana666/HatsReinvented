@@ -3,106 +3,60 @@ package com.magicbanana666.hats.common;
 import com.magicbanana666.hats.HatsReinvented;
 import com.magicbanana666.hats.common.hat.HatPart;
 import com.magicbanana666.hats.common.hat.PlayerHats;
+import com.mojang.serialization.Codec;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.attachment.AttachmentSyncHandler;
-import net.neoforged.neoforge.attachment.AttachmentType;
-import net.neoforged.neoforge.attachment.IAttachmentHolder;
-import net.neoforged.neoforge.attachment.IAttachmentSerializer;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.NeoForgeRegistries;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.function.Supplier;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 public final class HatsAttachments
 {
-    public static final DeferredRegister<AttachmentType<?>> REGISTER = DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, HatsReinvented.MOD_ID);
+    private static final Codec<PlayerHats> PLAYER_HATS_CODEC = CompoundTag.CODEC.xmap(HatsAttachments::playerHatsFromTag, hats -> hats.write(new CompoundTag()));
+    private static final StreamCodec<RegistryFriendlyByteBuf, PlayerHats> PLAYER_HATS_STREAM_CODEC = ByteBufCodecs.COMPOUND_TAG.map(HatsAttachments::playerHatsFromTag, hats -> hats.write(new CompoundTag())).cast();
 
     /** The hat an entity is wearing. count -1 means "no hat decided yet". Synced to everyone who can see the entity. */
-    public static final Supplier<AttachmentType<HatPart>> HAT = REGISTER.register("hat", () -> AttachmentType.<HatPart>builder(() -> new HatPart())
-            .serialize(new IAttachmentSerializer<>()
-            {
-                @Override
-                public HatPart read(IAttachmentHolder holder, ValueInput input)
-                {
-                    return input.read("data", CompoundTag.CODEC).map(HatPart::fromTag).orElseGet(HatPart::new);
-                }
-
-                @Override
-                public boolean write(HatPart attachment, ValueOutput output)
-                {
-                    output.store("data", CompoundTag.CODEC, attachment.write(new CompoundTag()));
-                    return true;
-                }
-            })
+    public static final AttachmentType<HatPart> HAT = AttachmentRegistry.create(HatsReinvented.id("hat"), builder -> builder
+            .initializer(HatPart::new)
+            .persistent(CompoundTag.CODEC.xmap(HatPart::fromTag, part -> part.write(new CompoundTag())))
             .copyOnDeath()
-            .sync(new AttachmentSyncHandler<>()
-            {
-                @Override
-                public void write(RegistryFriendlyByteBuf buf, HatPart attachment, boolean initialSync)
-                {
-                    buf.writeNbt(attachment.write(new CompoundTag()));
-                }
-
-                @Override
-                public HatPart read(IAttachmentHolder holder, RegistryFriendlyByteBuf buf, @Nullable HatPart previousValue)
-                {
-                    HatPart part = previousValue != null ? previousValue : new HatPart();
-                    CompoundTag tag = buf.readNbt();
-                    part.read(tag != null ? tag : new CompoundTag());
-                    return part;
-                }
-            })
-            .build());
+            .syncWith(HatPart.STREAM_CODEC, AttachmentSyncPredicate.all()));
 
     /** The hats a player owns. Saved, kept on death, only synced to that player. */
-    public static final Supplier<AttachmentType<PlayerHats>> PLAYER_HATS = REGISTER.register("player_hats", () -> AttachmentType.<PlayerHats>builder(() -> new PlayerHats())
-            .serialize(new IAttachmentSerializer<>()
-            {
-                @Override
-                public PlayerHats read(IAttachmentHolder holder, ValueInput input)
-                {
-                    PlayerHats hats = new PlayerHats();
-                    input.read("data", CompoundTag.CODEC).ifPresent(hats::read);
-                    return hats;
-                }
-
-                @Override
-                public boolean write(PlayerHats attachment, ValueOutput output)
-                {
-                    output.store("data", CompoundTag.CODEC, attachment.write(new CompoundTag()));
-                    return true;
-                }
-            })
+    public static final AttachmentType<PlayerHats> PLAYER_HATS = AttachmentRegistry.create(HatsReinvented.id("player_hats"), builder -> builder
+            .initializer(PlayerHats::new)
+            .persistent(PLAYER_HATS_CODEC)
             .copyOnDeath()
-            .sync(new AttachmentSyncHandler<>()
-            {
-                @Override
-                public boolean sendToPlayer(IAttachmentHolder holder, ServerPlayer to)
-                {
-                    return holder == to;
-                }
-
-                @Override
-                public void write(RegistryFriendlyByteBuf buf, PlayerHats attachment, boolean initialSync)
-                {
-                    buf.writeNbt(attachment.write(new CompoundTag()));
-                }
-
-                @Override
-                public PlayerHats read(IAttachmentHolder holder, RegistryFriendlyByteBuf buf, @Nullable PlayerHats previousValue)
-                {
-                    PlayerHats hats = previousValue != null ? previousValue : new PlayerHats();
-                    CompoundTag tag = buf.readNbt();
-                    hats.read(tag != null ? tag : new CompoundTag());
-                    return hats;
-                }
-            })
-            .build());
+            .syncWith(PLAYER_HATS_STREAM_CODEC, AttachmentSyncPredicate.targetOnly()));
 
     private HatsAttachments() {}
+
+    /** Loads the class, which registers the attachment types. */
+    public static void init() {}
+
+    private static PlayerHats playerHatsFromTag(CompoundTag tag)
+    {
+        PlayerHats hats = new PlayerHats();
+        hats.read(tag);
+        return hats;
+    }
+
+    /**
+     * Sends the (changed in place) hat of the entity to the clients. Fabric only syncs when a different value is set,
+     * so a copy is set.
+     */
+    public static void syncHat(Entity entity)
+    {
+        entity.setAttached(HAT, entity.getAttachedOrCreate(HAT).createCopy());
+    }
+
+    /** Sends the (changed in place) owned hats of the player to that player. */
+    public static void syncPlayerHats(Player player)
+    {
+        player.setAttached(PLAYER_HATS, playerHatsFromTag(player.getAttachedOrCreate(PLAYER_HATS).write(new CompoundTag())));
+    }
 }

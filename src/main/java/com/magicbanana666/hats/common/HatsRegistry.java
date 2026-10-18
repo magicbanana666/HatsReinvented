@@ -1,24 +1,26 @@
 package com.magicbanana666.hats.common;
 
 import com.magicbanana666.hats.HatsReinvented;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class HatsRegistry
 {
-    public static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, HatsReinvented.MOD_ID);
-
-    public static final DeferredHolder<SoundEvent, SoundEvent> TUBE = SOUNDS.register("tube", SoundEvent::createVariableRangeEvent);
-    public static final DeferredHolder<SoundEvent, SoundEvent> POOF = SOUNDS.register("poof", SoundEvent::createVariableRangeEvent);
-    public static final DeferredHolder<SoundEvent, SoundEvent> BONK = SOUNDS.register("bonk", SoundEvent::createVariableRangeEvent);
+    public static final Holder.Reference<SoundEvent> TUBE = sound("tube");
+    public static final Holder.Reference<SoundEvent> POOF = sound("poof");
+    public static final Holder.Reference<SoundEvent> BONK = sound("bonk");
 
     private HatsRegistry() {}
 
-    public static void register(IEventBus modBus)
+    /** Loads the class, which registers the sounds. */
+    public static void register() {}
+
+    private static Holder.Reference<SoundEvent> sound(String name)
     {
-        SOUNDS.register(modBus);
+        Identifier id = HatsReinvented.id(name);
+        return Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));
     }
 }

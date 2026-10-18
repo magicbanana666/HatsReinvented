@@ -4,20 +4,21 @@ import com.magicbanana666.bananautil.client.head.HeadLocator;
 import com.magicbanana666.hats.common.HatsConfig;
 import com.magicbanana666.hats.common.hat.HatPart;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState;
+import net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.util.context.ContextKey;
 
 /**
  * Puts the hat on top of the head of any living entity (the head is found by BananaUtil's HeadLocator).
  */
 public class HatLayer<S extends LivingEntityRenderState, M extends EntityModel<? super S>> extends RenderLayer<S, M>
 {
-    public static final ContextKey<HatPart> HAT_KEY = new ContextKey<>(com.magicbanana666.hats.HatsReinvented.id("hat"));
+    public static final RenderStateDataKey<HatPart> HAT_KEY = RenderStateDataKey.create(() -> "hatsreinvented:hat");
 
     /** Hat scale relative to a bare player head: hats were made to fit over a helmet. */
     private static final float ARMOR_SCALE = 1.27F;
@@ -33,7 +34,7 @@ public class HatLayer<S extends LivingEntityRenderState, M extends EntityModel<?
     @Override
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, S state, float yRot, float xRot)
     {
-        HatPart hat = state.getRenderData(HAT_KEY);
+        HatPart hat = ((FabricRenderState)state).getData(HAT_KEY);
         if(hat == null || !hat.isAHat() || hat.count <= 0 || state.isInvisible || !HatsConfig.client(HatsConfig.renderHats, true))
         {
             return;

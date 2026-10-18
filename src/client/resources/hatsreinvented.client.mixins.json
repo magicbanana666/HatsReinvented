@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "com.magicbanana666.hats.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["GameRendererMixin", "LivingEntityRendererMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

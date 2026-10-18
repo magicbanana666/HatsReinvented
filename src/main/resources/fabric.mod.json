@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_display_name}",
+  "description": "Mobs spawn wearing hats. Kill them to collect the hats, then wear and customise them (press H).",
+  "authors": ["magicbanana666"],
+  "contributors": ["Hats by the hat makers named in each hat file"],
+  "contact": {
+    "homepage": "https://github.com/magicbanana666/HatsReinvented",
+    "sources": "https://github.com/magicbanana666/HatsReinvented",
+    "issues": "https://github.com/magicbanana666/HatsReinvented/issues"
+  },
+  "license": "Don't Be an Asshole License (hats and assets: LGPL-3.0, see the licenses folder in the source)",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.magicbanana666.hats.HatsReinvented"],
+    "client": ["com.magicbanana666.hats.client.HatsClient"]
+  },
+  "mixins": [
+    { "config": "${mod_id}.client.mixins.json", "environment": "client" }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_dep}",
+    "java": ">=25",
+    "fabric-api": "*",
+    "bananautil": ">=1.0.0"
+  },
+  "suggests": {
+    "morphingtime": "*"
+  }
+}

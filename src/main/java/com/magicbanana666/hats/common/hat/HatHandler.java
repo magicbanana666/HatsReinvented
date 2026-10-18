@@ -4,6 +4,7 @@ import com.magicbanana666.hats.HatsReinvented;
 import com.magicbanana666.hats.common.HatsAttachments;
 import com.magicbanana666.hats.common.HatsConfig;
 import com.magicbanana666.hats.common.network.NewHatPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -11,7 +12,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -150,12 +150,12 @@ public final class HatHandler
 
     public static HatPart getHat(LivingEntity entity)
     {
-        return entity.getData(HatsAttachments.HAT);
+        return entity.getAttachedOrCreate(HatsAttachments.HAT);
     }
 
     public static boolean hasBeenAllocated(LivingEntity entity)
     {
-        return entity.hasData(HatsAttachments.HAT) && getHat(entity).count >= 0;
+        return entity.hasAttached(HatsAttachments.HAT) && getHat(entity).count >= 0;
     }
 
     public static boolean isBoss(LivingEntity entity)
@@ -220,7 +220,7 @@ public final class HatHandler
         part.isShowing = true;
         info.assignAccessoriesToPart(part, entity, boss);
         hat.copy(part);
-        entity.syncData(HatsAttachments.HAT);
+        HatsAttachments.syncHat(entity);
     }
 
     public static void assignNoHat(LivingEntity entity)
@@ -228,7 +228,7 @@ public final class HatHandler
         HatPart hat = getHat(entity);
         hat.copy(new HatPart());
         hat.count = 0;
-        entity.syncData(HatsAttachments.HAT);
+        HatsAttachments.syncHat(entity);
     }
 
     public static void setHat(LivingEntity entity, @Nullable HatPart part)
@@ -239,7 +239,7 @@ public final class HatHandler
             return;
         }
         getHat(entity).copy(part);
-        entity.syncData(HatsAttachments.HAT);
+        HatsAttachments.syncHat(entity);
     }
 
     /** Removes hats (and accessories) the server doesn't have the files for. */
@@ -256,7 +256,7 @@ public final class HatHandler
 
     public static PlayerHats getPlayerHats(Player player)
     {
-        return player.getData(HatsAttachments.PLAYER_HATS);
+        return player.getAttachedOrCreate(HatsAttachments.PLAYER_HATS);
     }
 
     public static boolean useInventory(Player player)
@@ -296,10 +296,10 @@ public final class HatHandler
             owned.setNew();
             if(HatsConfig.server(HatsConfig.sendNewHatMessage, true))
             {
-                PacketDistributor.sendToPlayer(player, new NewHatPayload(isNewHat, mobHat.createCopy(), newAccessories));
+                ServerPlayNetworking.send(player, new NewHatPayload(isNewHat, mobHat.createCopy(), newAccessories));
             }
         }
-        player.syncData(HatsAttachments.PLAYER_HATS);
+        HatsAttachments.syncPlayerHats(player);
     }
 
     private static void setCountOfAll(HatPart part, int count)
@@ -469,7 +469,7 @@ public final class HatHandler
                 hats.hatParts.add(clean);
             }
         }
-        player.syncData(HatsAttachments.PLAYER_HATS);
+        HatsAttachments.syncPlayerHats(player);
 
         if(!changeWorn)
         {

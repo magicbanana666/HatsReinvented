@@ -1,66 +1,68 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.148'
+    // 26.x is unobfuscated: the non-remapping Loom plugin, no mappings dependency
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 version = "${minecraft_version}-${mod_version}"
 group = mod_group
-base.archivesName = mod_name
+base.archivesName = "${mod_name}-FABRIC"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 // Keep build output out of OneDrive (it locks files while syncing)
-layout.buildDirectory = file("${System.getProperty('user.home')}/.gradle-builds/${project.name}")
+def buildRoot = "${System.getProperty('user.home')}/.gradle-builds/${project.name}-fabric"
+layout.buildDirectory = file(buildRoot)
 
-repositories {
-    mavenLocal()
-}
-
-dependencies {
-    implementation "com.magicbanana666:bananautil:${bananautil_version}"
-    // -PwithMorph: also run Morph Reinvented in the dev client (to test the integration)
-    if (project.hasProperty('withMorph')) {
-        runtimeOnly files("${System.getProperty('user.home')}/.gradle-builds/MorphReinvented/libs/MorphReinvented-${minecraft_version}-1.0.0.jar")
-    }
-}
-
-neoForge {
-    version = neoforge_version
+loom {
+    splitEnvironmentSourceSets()
 
     mods {
         "${mod_id}" {
-            sourceSet(sourceSets.main)
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
         }
     }
 
     runs {
         configureEach {
-            gameDirectory = file("${System.getProperty('user.home')}/.gradle-builds/${project.name}/run")
-            logLevel = org.slf4j.event.Level.INFO
+            runDir = project.relativePath(file("${buildRoot}/run"))
         }
         client {
-            client()
             // -Pquickplay=<world> loads straight into a singleplayer world (automated smoke tests)
             if (project.hasProperty('quickplay')) {
-                programArguments.addAll('--quickPlaySingleplayer', project.property('quickplay').toString())
+                programArgs '--quickPlaySingleplayer', project.property('quickplay').toString()
             }
         }
         server {
-            server()
-            programArgument '--nogui'
+            programArgs '--nogui'
         }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    // BananaUtil (Fabric build)
+    implementation files("${System.getProperty('user.home')}/.gradle-builds/releases/fabric-${minecraft_version}/BananaUtil-FABRIC-${bananautil_version}.jar")
+    // -PwithMorph: also run Morphing Time in the dev client (to test the integration)
+    if (project.hasProperty('withMorph')) {
+        runtimeOnly files(project.property('withMorph').toString())
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.release = 25
 }
 
 processResources {
-    def props = [mod_id: mod_id, mod_name: mod_name, mod_display_name: mod_display_name, mod_version: mod_version, minecraft_version: minecraft_version, neoforge_version: neoforge_version, bananautil_version: bananautil_version]
+    def props = [mod_id: mod_id, mod_name: mod_name, mod_display_name: mod_display_name, mod_version: mod_version, loader_version: loader_version, minecraft_dep: minecraft_dep]
     inputs.properties props
-    filesMatching('META-INF/neoforge.mods.toml') {
+    filesMatching('fabric.mod.json') {
         expand props
     }
 }
