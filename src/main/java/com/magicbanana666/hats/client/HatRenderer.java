@@ -16,7 +16,6 @@ import net.minecraft.util.ARGB;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.Color;
-import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -89,7 +88,7 @@ public final class HatRenderer
             {
                 try
                 {
-                    NativeImage image = NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes));
+                    NativeImage image = NativeImage.read(bytes);
                     if(key.hue() != 0 || key.saturation() != 0 || key.brightness() != 0)
                     {
                         applyHsb(image, new float[] {key.hue() / (float)COLOUR_STEPS, key.saturation() / (float)COLOUR_STEPS, key.brightness() / (float)COLOUR_STEPS});

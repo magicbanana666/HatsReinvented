@@ -33,7 +33,7 @@ public final class HatsReinvented
         modBus.addListener(HatsReinvented::registerPayloads);
         modBus.addListener(HatsReinvented::onConfigLoad);
 
-        container.registerConfig(ModConfig.Type.SERVER, HatsConfig.SERVER_SPEC);
+        container.registerConfig(ModConfig.Type.SYNCED, HatsConfig.SERVER_SPEC);
         container.registerConfig(ModConfig.Type.CLIENT, HatsConfig.CLIENT_SPEC);
 
         HatResources.extractDefaults(false);

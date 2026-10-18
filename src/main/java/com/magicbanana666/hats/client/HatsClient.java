@@ -38,7 +38,6 @@ import net.minecraft.world.entity.Avatar;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.UUID;
 
@@ -46,7 +45,7 @@ import java.util.UUID;
 public final class HatsClient
 {
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(HatsReinvented.id("hats"));
-    public static final KeyMapping KEY_HATS = new KeyMapping("hats.key.hatsMenu", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY);
+    public static final KeyMapping KEY_HATS = new KeyMapping("hats.key.hatsMenu", KeyConflictContext.IN_GAME, InputConstants.Type.KEYBOARD, InputConstants.KEY_H, CATEGORY);
 
     /** While the hats menu is open, the local player shows this hat instead of the worn one. */
     @Nullable
