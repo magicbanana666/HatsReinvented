@@ -12,7 +12,7 @@ base.archivesName = "${mod_name}-FABRIC"
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 // Keep build output out of OneDrive (it locks files while syncing)
-def buildRoot = "${System.getProperty('user.home')}/.gradle-builds/${project.name}-fabric"
+def buildRoot = "${System.getProperty('user.home')}/.gradle-builds/${project.name}-fabric-${minecraft_version}"
 layout.buildDirectory = file(buildRoot)
 
 loom {

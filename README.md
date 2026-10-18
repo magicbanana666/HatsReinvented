@@ -1,6 +1,6 @@
 # Hats Reinvented
 
-**Mobs spawn wearing hats. Kill them to collect the hats, then wear and customise them.** For **Minecraft 26.1.2 / Fabric**.
+**Mobs spawn wearing hats. Kill them to collect the hats, then wear and customise them.** For **Minecraft 26.2 / Fabric**.
 
 ## Features
 

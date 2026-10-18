@@ -16,9 +16,9 @@ public final class ClientEvents
     {
         while(HatsClient.KEY_HATS.consumeClick())
         {
-            if(mc.player != null && mc.screen == null)
+            if(mc.player != null && mc.gui.screen() == null)
             {
-                mc.setScreen(new HatsScreen(mc.player));
+                mc.gui.setScreen(new HatsScreen(mc.player));
             }
         }
     }
