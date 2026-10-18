@@ -160,6 +160,6 @@ public final class HatsClient
         {
             subtitle.append(Component.literal(" + " + String.join(", ", payload.newAccessories())));
         }
-        SystemToast.add(mc.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, subtitle);
+        SystemToast.add(mc.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, subtitle);
     }
 }
