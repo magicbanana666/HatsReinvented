@@ -9,12 +9,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Start of a frame (NeoForge's RenderFrameEvent.Pre): resets the per frame hat render count.
+ * Start of a frame (NeoForge's RenderFrameEvent.Pre; in 26.3 a frame starts with extract): resets the per frame hat render count.
  */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin
 {
-    @Inject(method = "render(Lnet/minecraft/client/DeltaTracker;Z)V", at = @At("HEAD"))
+    @Inject(method = "extract(Lnet/minecraft/client/DeltaTracker;Z)V", at = @At("HEAD"))
     private void hats$startFrame(DeltaTracker deltaTracker, boolean advanceGameTime, CallbackInfo ci)
     {
         ClientEvents.onRenderFrame();
